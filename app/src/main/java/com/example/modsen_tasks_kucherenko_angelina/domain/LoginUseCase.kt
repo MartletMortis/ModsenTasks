@@ -1,10 +1,10 @@
 package com.example.modsen_tasks_kucherenko_angelina.domain
 
-import com.example.modsen_tasks_kucherenko_angelina.data.LoginData
+import com.example.modsen_tasks_kucherenko_angelina.data.LoginRepository
 
-class LoginUseCase(private val loginData: LoginData){
-
-    fun isValid(login: String, pass: String): Boolean{
-        return loginData.users.contains(login to pass)
+class LoginUseCase(private val repository: LoginRepository){                    //теперь принимает в себя репозиторий, а не дата класс
+    suspend operator fun invoke(login : String, password : String): Boolean {
+        return repository.login(login, password)
     }
+
 }

@@ -23,14 +23,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.modsen_tasks_kucherenko_angelina.R
+import com.example.modsen_tasks_kucherenko_angelina.domain.LoginEvent
+import com.example.modsen_tasks_kucherenko_angelina.domain.LoginIntent
 import com.example.modsen_tasks_kucherenko_angelina.ui.navigation.Screen
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.modsen_tasks_kucherenko_angelina.domain.LoginScreenViewModel
-import com.example.modsen_tasks_kucherenko_angelina.domain.UIEvent
+import com.example.modsen_tasks_kucherenko_angelina.ui.LoginScreenViewModel
+import kotlinx.coroutines.flow.filterIsInstance
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -39,17 +42,23 @@ fun Task1LoginScreen(
     viewModel: LoginScreenViewModel = koinViewModel() //внедряем вьюмодель из коина
 
 ) {
-    val uiEvent by viewModel.uiEvent.collectAsState(initial = null)
-    val context = LocalContext.current
+    val state by viewModel.uiState.collectAsState()
+    val context= LocalContext.current
 
-    LaunchedEffect(uiEvent) { //подписываемся на изменения
-        when (uiEvent) {
-            is UIEvent.NavigateToTask1EmptyScreen ->
+    LaunchedEffect(Unit) { //подписываемся на изменения об ошибке и вывода тост
+        viewModel.event
+            .filterIsInstance<LoginEvent.ShowError>()
+            .collect{
+                Toast.makeText(context, it.error, Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    LaunchedEffect(Unit) { //подписываемся на изменеия об удачном логине и переходе на пустой экран
+        viewModel.event
+            .filterIsInstance<LoginEvent.NavigateToScreen>()
+            .collect{
                 onNavigateTo(Screen.Task1Empty)
-            is UIEvent.ShowError ->
-                Toast.makeText(context, "Invalid user data", Toast.LENGTH_SHORT).show()
-            else -> {}
-        }
+            }
     }
 
     Column(
@@ -63,8 +72,8 @@ fun Task1LoginScreen(
         )
 
         OutlinedTextField(
-            value = viewModel.log,
-            onValueChange = viewModel::updateLogin,
+            value = state.login,
+            onValueChange = {viewModel.onIntent(LoginIntent.UpdateLogin(it))},
             leadingIcon = {
                 Icon(
                     painter = rememberVectorPainter(image = Icons.Default.AccountCircle),
@@ -78,8 +87,8 @@ fun Task1LoginScreen(
         )
 
         OutlinedTextField(
-            value = viewModel.pswd,
-            onValueChange = viewModel::updatePassword,
+            value = state.password,
+            onValueChange = {viewModel.onIntent(LoginIntent.UpdatePassword(it))},
             leadingIcon = {
                 Icon(
                     painter = rememberVectorPainter(image = Icons.Default.Lock),
@@ -95,19 +104,23 @@ fun Task1LoginScreen(
 
         Button(
             onClick = {
-                viewModel.onButtonClick()
+                viewModel.onIntent(LoginIntent.Submit)
             },
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier.padding(top = 25.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.Black
             ),
-            enabled = viewModel.log.isNotBlank() && viewModel.pswd.isNotBlank()
+            enabled = state.isButtonEnabled //теперь кликабельность кнопки тоже обрабатывается стейтом, а не юаем
         ) {
             Box(
                 modifier = Modifier.padding(horizontal = 30.dp, vertical = 5.dp)
             ) {
-                Text(text = "Log In")
+                Text(text = if(state.isLoading) {
+                    stringResource(id = R.string.button_logging_in)
+                } else {
+                    stringResource(id = R.string.button_log_in)
+                })
             }
 
         }
